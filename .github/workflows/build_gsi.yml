@@ -23,7 +23,6 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-          remove-large-packages: 'true'
 
       - name: Show disk usage
         run: df -h
