@@ -1,0 +1,31 @@
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+
+# Build output directories
+.out/
+out/
+
+# System binaries / images
+*.img
+*.bin
+*.zip
+*.tar
+*.tar.gz
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Repo / tooling
+.repo/

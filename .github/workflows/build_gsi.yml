@@ -1,0 +1,78 @@
+name: Build Android 16 GSI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-gsi:
+    name: Build minimal Android 16 ARM64 GSI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Free disk space and allocate 32GB swap
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          swap-size-mb: 32768
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential git python3 python3-pip zip unzip \
+            zlib1g-dev libssl-dev libncurses5 libncurses5-dev \
+            curl wget bc bison flex gperf \
+            libxml2-utils xsltproc fontconfig \
+            libc6-dev-i386 lib32ncurses5-dev \
+            x11proto-core-dev libx11-dev libgl1-mesa-dev \
+            openjdk-17-jdk ccache repo
+
+      - name: Configure git defaults
+        run: |
+          git config --global user.name "GSI Build Bot"
+          git config --global user.email "bot@gsi.local"
+          git config --global color.ui false
+
+      - name: Download repo tool into PATH
+        run: |
+          mkdir -p "$HOME/.bin"
+          curl -sSL https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/.bin/repo"
+          chmod a+x "$HOME/.bin/repo"
+          echo "$HOME/.bin" >> "$GITHUB_PATH"
+
+      - name: Initialize manifest repository
+        run: |
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+          repo init -u https://github.com/ponces/treble_aosp.git -b android-16.0 --depth=1
+
+      - name: Sync source tree
+        run: |
+          cd "$HOME/aosp"
+          repo sync -c --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc)
+
+      - name: Build system image
+        run: |
+          cd "$HOME/aosp"
+          source build/envsetup.sh
+          lunch treble_arm64_bvN-userdebug
+          make -j$(nproc) systemimage
+
+      - name: Compress system.img
+        if: success()
+        run: |
+          xz -z -9 "$HOME/aosp/out/target/product/phh_gsi/system.img"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-16-gsi-system-img
+          path: /home/runner/aosp/out/target/product/phh_gsi/system.img.xz
+          if-no-files-found: warn
